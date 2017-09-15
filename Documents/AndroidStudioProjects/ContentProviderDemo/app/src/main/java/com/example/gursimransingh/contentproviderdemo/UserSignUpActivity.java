@@ -2,9 +2,12 @@ package com.example.gursimransingh.contentproviderdemo;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Adapter;
 import android.widget.AdapterView;
@@ -46,7 +49,8 @@ public class UserSignUpActivity extends AppCompatActivity implements AdapterView
     ArrayAdapter<String> adapter;
     ContentResolver contentResolver;
 
-    User user;
+    User user,rcvUser;
+    boolean updateMode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +73,34 @@ public class UserSignUpActivity extends AppCompatActivity implements AdapterView
         spinnerCity.setOnItemSelectedListener(this);
         radioButtonMale.setOnClickListener(this);
         radioButtonFemale.setOnClickListener(this);
+        Intent rcv = getIntent();
+        updateMode= rcv.hasExtra(Util.KEY_USER);
 
+        ///In update mode
+        if (updateMode){
+            rcvUser=(User)rcv.getSerializableExtra(Util.KEY_USER);
+            editTextName.setText(rcvUser.getName());
+            editTextEmail.setText(rcvUser.getEmail());
+            editTextPassword.setText(rcvUser.getPassword());
+
+            if (rcvUser.getGender().equals("Male")){
+                radioButtonMale.setChecked(true);
+                radioButtonFemale.setChecked(false);
+            }
+            else {
+                radioButtonMale.setChecked(false);
+                radioButtonFemale.setChecked(true);
+            }
+            for (int i = 0; i <adapter.getCount() ; i++) {
+                if (rcvUser.getCity().equals(adapter.getItem(i))){
+                    spinnerCity.setSelection(i);
+                    break;
+                }
+            }
+
+            buttonSignUp.setText("Update User");
+
+        }
     }
 
 //    @OnClick(R.id.button)
@@ -118,8 +149,22 @@ public class UserSignUpActivity extends AppCompatActivity implements AdapterView
         values.put(Util.COL_GENDER, user.getGender());
         values.put(Util.COL_CITY, user.getCity());
 
-        Uri uri = contentResolver.insert(Util.USER_URI, values); //Call insert of Content Provider
-        Toast.makeText(this, user.getName() + " registered successfully with id " + uri.getLastPathSegment(), Toast.LENGTH_LONG).show();
+        if (!updateMode){
+            Uri uri = contentResolver.insert(Util.USER_URI, values); //Call insert of Content Provider
+            Toast.makeText(this, user.getName() + " registered successfully with id " + uri.getLastPathSegment(), Toast.LENGTH_LONG).show();
+            clear();
+        }
+        else {
+            String where = Util.COL_ID+" = "+user.getId();
+             int i = contentResolver.update(Util.USER_URI,values,where,null);
+            if (i>0){
+                Toast.makeText(this,rcvUser.getName()+" is updates",Toast.LENGTH_LONG).show();
+                //BackWard Pass to All users activity
+                finish();
+            }
+        }
+
+
     }
 
     void clear() {
@@ -131,4 +176,20 @@ public class UserSignUpActivity extends AppCompatActivity implements AdapterView
         radioButtonMale.setChecked(false);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_all,menu);
+
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.allUsers){
+            Intent intent = new Intent(UserSignUpActivity.this, AllUsers.class);
+            startActivity(intent);
+        }
+        return super.onOptionsItemSelected(item);
+    }
 }
